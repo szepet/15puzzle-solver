@@ -18,7 +18,8 @@
 #include <SDL_image.h>
 
 uint64_t getInitState() {
-	return 0xF973C401AB8D6E25ULL;
+	return 0xE5893AC70F61B24DULL;
+	//return 0xF973C401AB8D6E25ULL;
 	//return 0x0123456789ABFCDEULL;
 }
 
@@ -99,18 +100,32 @@ inline int getColNum(unsigned pos) {
 	return pos % 4;
 }
 
-
 unsigned heuristic(uint64_t state) {
 	//return the sum of the manhattan distance of the tiles from their final position
 	unsigned sum = 0;
-	for (int i = 15; i >= 0; i--)
+	for (int i= 15; i >= 0; i--)
 	{
+		int k = 1;
 		unsigned num = state & 15u;
-		sum += std::abs(getRowNum(num) - getRowNum(i)) + std::abs(getColNum(num) - getColNum(i));
-		//std::cout << i << " " << num << " "<< std::abs(getRowNum(num) - getRowNum(i)) << " " << std::abs(getColNum(num) - getColNum(i)) << "\n";
+		sum += k*std::abs(getRowNum(num) - getRowNum(i)) + std::abs(getColNum(num) - getColNum(i));
 		state >>= 4;
 	}
-	return sum;
+
+	// linear conflicts
+	/*for (int i = 15; i >= 0; i--)
+	{
+		for (int j = 15; j >= 0; j--)
+		{
+			int vi = getVal(state, i), vj = getVal(state, j);
+			if (getRowNum(i) == getRowNum(j) && getRowNum(j) == getRowNum(vi) &&
+				getRowNum(j) == getRowNum(vj) && ((getColNum(i) - getColNum(j))*(getColNum(vi) - getColNum(vj))) < 0)
+				sum += 2;
+			else if (getColNum(i) == getColNum(j) && getColNum(j) == getColNum(vi) &&
+				getColNum(j) == getColNum(vj) && ((getRowNum(i) - getRowNum(j))*(getRowNum(vi) - getRowNum(vj))) < 0)
+				sum += 2;
+		}
+	}*/
+	return 30*sum;
 }
 
 int getEmptyPos(uint64_t state) {
@@ -123,14 +138,11 @@ int getEmptyPos(uint64_t state) {
 }
 std::map<uint64_t, unsigned> level;
 struct less_heur {
-	bool operator()(uint64_t a, uint64_t b) { return heuristic(a)*20 + level[a] > heuristic(b)*20 + level[b]; }
+	bool operator()(uint64_t a, uint64_t b) { return heuristic(a) + level[a] > heuristic(b) + level[b]; }
 };
 
 
 uint64_t getNextState(int emptyPos, int fromPos, uint64_t state) {
-	// 0 out emptyPos
-
-	//~(15 << (15 - emptyPos));
 	state &= ~(((uint64_t)(15-getVal(state,fromPos))) << ((15-emptyPos)*4));
 	state |= (15ull << ((15-fromPos)*4));
 	return state;
@@ -144,7 +156,7 @@ void printState(uint64_t state, std::ostream& os = std::cout) {
 	}
 	os << "=========\n";
 }
-
+int maxHeur = 2000;
 bool solve(uint64_t state, std::map<uint64_t, uint64_t>& parent) {
 
 	if (!isSolveable(state)) {
@@ -171,7 +183,7 @@ bool solve(uint64_t state, std::map<uint64_t, uint64_t>& parent) {
 		for (int i = 0; i < num; ++i){
 			//std::cout << "emptyP: "<<emptyPos << ", neighb:" << (neighbour & 15u) << std::endl;
 			uint64_t nextState = getNextState(emptyPos, neighbour & 15u, actState);
-			if (visitedStates.find(nextState) == visitedStates.end()) {
+			if (visitedStates.find(nextState) == visitedStates.end() /*&& level[actState] < 200*/) {
 				Q.push(nextState);
 				parent[nextState] = actState;
 				level[nextState] = level[actState] + 1;
@@ -208,9 +220,11 @@ uint64_t readFile(std::string fname) {
 	return input_state;
 }
 int main(int argc, char* args[]) {
-	std::string filename = "puzzle.txt";
-	int animation_time_sec = 30;
-	
+	std::string filename = "puzzle2.txt";
+	const char* img_name = "15.gif";
+	int animation_time_sec = 10;
+	bool random = true;
+
 	std::map<uint64_t, uint64_t> parent;
 	bool solved = false;
 	int maxtime = 0;
@@ -219,7 +233,8 @@ int main(int argc, char* args[]) {
 	srand(time(0));
 	//for (int i = 0; i < 50000; ++i) {
 	state = readFile(filename);
-	state = getRandomState();
+	if(random)
+	  state = getRandomState();
 	printState(state);
 	auto t = std::clock();
 	solved = solve(state, parent);
@@ -243,6 +258,7 @@ int main(int argc, char* args[]) {
 		sol = parent[sol];
 		steps.push_back(sol);
 	}
+	std::cout << "Number of steps: "<<steps.size() << std::endl;
 	
 	if (SDL_Init(SDL_INIT_VIDEO) == -1)
 	{
@@ -258,7 +274,6 @@ int main(int argc, char* args[]) {
 		640,						// ablak szélessége
 		640,						// és magassága
 		SDL_WINDOW_SHOWN);			// megjelenítési tulajdonságok
-
 									// ha nem sikerült létrehozni az ablakot, akkor írjuk ki a hibát, amit kaptunk és lépjünk ki
 	if (win == nullptr)
 	{
@@ -277,7 +292,7 @@ int main(int argc, char* args[]) {
 		std::cout << "[Renderer létrehozása]Hiba az SDL inicializálása közben: " << SDL_GetError() << std::endl;
 		return 1;
 	}
-	SDL_Texture* tex = IMG_LoadTexture(ren, "lena.png");
+	SDL_Texture* tex = IMG_LoadTexture(ren, img_name);
 	if (tex == nullptr)
 	{
 		std::cout << "[Kép betöltése] Hiba: " << IMG_GetError() << std::endl;

@@ -175,7 +175,7 @@ bool solve(uint64_t state, std::map<uint64_t, uint64_t>& parent) {
 		visitedStates.insert(actState);
 		//assert(isValidState(actState));
 		if (isFinalState(actState))
-			return true;
+			return true; 
 		Q.pop();
 		int emptyPos = getEmptyPos(actState);
 
@@ -220,35 +220,65 @@ uint64_t readFile(std::string fname) {
 	return input_state;
 }
 int main(int argc, char* args[]) {
-	std::string filename = "puzzle2.txt";
+	std::string filename = "puzzle.txt";
 	const char* img_name = "15.gif";
-	int animation_time_sec = 10;
-	bool random = true;
+	int animation_time_sec = 30;
+	bool random = false;
+	char c = 'a';
+	while (c != 'r' && c != 'f') {
+		std::cout << "random input or file? (r/f)\n";
+		std::cin >> c;
+	}
+	if (c == 'r')
+		random = true;
+	else {
+		std::cout << "Name of the input file:\n";
+		std::cin >> filename;
+	}
 
+	//std::cout << "Time of the solution animation (sec):\n";
+	//std::cin >> animation_time_sec;
+	
 	std::map<uint64_t, uint64_t> parent;
 	bool solved = false;
 	int maxtime = 0;
 	uint64_t state;
-	uint64_t maxpuzzle;
 	srand(time(0));
+
 	//for (int i = 0; i < 50000; ++i) {
-	state = readFile(filename);
-	if(random)
-	  state = getRandomState();
+
+	
+	if (random)
+		state = getRandomState();
+	else
+		state = readFile(filename);
+
 	printState(state);
 	auto t = std::clock();
 	solved = solve(state, parent);
-	if (std::clock() - t > maxtime) {
-		maxtime = std::clock() - t;
-		maxpuzzle = state;
-	}
-	//}
-	std::cout << 1000.0 * maxtime / CLOCKS_PER_SEC << " ms" << std::endl;
+	std::cout << "Solving time: " << (std::clock() - t) / CLOCKS_PER_SEC << " ms" << std::endl;
+		//std::cout << "# of steps:" << stepnums[i] << std::endl;
 	
-	std::vector<uint64_t> steps;
-	steps.reserve(250);
+	/*std::sort(times.begin(), times.end());
+	std::cout << "max solve time " << 1000.0 * times[999] / CLOCKS_PER_SEC << " ms" << std::endl;
+	std::cout << "0.98 kvantil solve time " << 1000.0 * times[980] / CLOCKS_PER_SEC << " ms" << std::endl;
+	std::cout << "0.9 kvantil solve time " << 1000.0 * times[900] / CLOCKS_PER_SEC << " ms" << std::endl;
+	std::cout << "0.7 kvantil solve time " << 1000.0 * times[700] / CLOCKS_PER_SEC << " ms" << std::endl;
+	std::cout << "0.5 kvantil solve time " << 1000.0 * times[500] / CLOCKS_PER_SEC << " ms" << std::endl;
+
+	std::sort(stepnums.begin(), stepnums.end());
+	std::cout << "max num of steps " << stepnums[999] << " ms" << std::endl;
+	std::cout << "0.98 kvantil num of steps " <<stepnums[980]  << " ms" << std::endl;
+	std::cout << "0.9 kvantil num of steps " <<  stepnums[900] << " ms" << std::endl;
+	std::cout << "0.7 kvantil num of steps " <<  stepnums[700]  << " ms" << std::endl;
+	std::cout << "0.5 kvantil num of steps " <<  stepnums[500]  << " ms" << std::endl;
+	*/
 	if (!solved)
 		return 0;
+
+	std::vector<uint64_t> steps;
+	steps.reserve(250);
+
 	std::ofstream ofs("sol.txt");
 	// get the path to the start state (from the final state)
 	uint64_t sol = 0x0123456789ABCDEFULL;
@@ -258,7 +288,7 @@ int main(int argc, char* args[]) {
 		sol = parent[sol];
 		steps.push_back(sol);
 	}
-	std::cout << "Number of steps: "<<steps.size() << std::endl;
+	std::cout << "Number of steps: " << steps.size() << std::endl;
 	
 	if (SDL_Init(SDL_INIT_VIDEO) == -1)
 	{
@@ -300,7 +330,6 @@ int main(int argc, char* args[]) {
 		return 1;
 	}
 
-	// véget kell-e érjen a program futása?
 	bool quit = false;
 	// feldolgozandó üzenet ide kerül
 	SDL_Event ev;
